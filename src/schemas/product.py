@@ -2,6 +2,7 @@ from pydantic import BaseModel
 import uuid
 from datetime import datetime
 
+
 class ProductBase(BaseModel):
     name: str
     barcode: str
@@ -9,8 +10,10 @@ class ProductBase(BaseModel):
     price: float
     category: str
 
+
 class ProductCreate(ProductBase):
     pass
+
 
 class ProductResponse(ProductBase):
     id: uuid.UUID

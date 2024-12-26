@@ -1,21 +1,43 @@
+import pandas as pd
+
 from fastapi import APIRouter, UploadFile, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
-import pandas as pd
-from src.settings.db import get_db
+from src.base.db import get_db
 from src.models.product import Product
+from src.other.dependies import db_rollback
 
 router = APIRouter()
 
+
 @router.post("/upload-products")
-async def upload_products(
-    file: UploadFile,
-    db: AsyncSession = Depends(get_db)
-):
+@db_rollback
+async def upload_products(file: UploadFile, db: AsyncSession = Depends(get_db)):
+    data = _validate_file_data(file)
+
+    errors = []
+    for index, row in data.iterrows():
+        row = _cast_row(row.to_dict())
+        try:
+            if any((pd.isna(val) for val in row.values())):
+                raise ValueError("One or more required fields are missing.")
+
+            product = Product(**row)
+            db.add(product)
+
+        except Exception as e:
+            errors.append({"row": index + 1, "error": str(e)})
+
+    if errors:
+        return {"message": "File processed with some errors.", "errors": errors}
+
+    return {"message": "File processed successfully!"}
+
+
+def _validate_file_data(file: UploadFile):
     if not file.filename.endswith((".csv", ".xlsx")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported file format. Use CSV or Excel."
+            detail="Unsupported file format. Use CSV or Excel.",
         )
 
     try:
@@ -26,57 +48,28 @@ async def upload_products(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error reading file: {str(e)}"
+            detail=f"Error reading file: {str(e)}",
         )
 
     required_columns = {"barcode", "name", "stock_quantity", "price", "category"}
     if not required_columns.issubset(data.columns):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File must include columns: {required_columns}"
+            detail=f"File must include columns: {required_columns}",
         )
 
-    errors = []
+    return data
 
-    for index, row in data.iterrows():
-        try:
-            # Extract and validate row data
-            barcode = row.get('barcode')
-            name = row.get('name')
-            stock_quantity = row.get('stock_quantity')
-            price = row.get('price')
-            category = row.get('category')
 
-            if pd.isna(barcode) or pd.isna(name) or pd.isna(stock_quantity) or pd.isna(price) or pd.isna(category):
-                raise ValueError("One or more required fields are missing.")
+def _cast_row(data: dict):
+    column_types = {
+        "barcode": str,
+        "name": str,
+        "stock_quantity": int,
+        "price": float,
+        "category": str
+    }
 
-            # Create a new Product instance
-            product = Product(
-                name=name,
-                barcode=str(barcode),
-                stock_quantity=int(stock_quantity),
-                price=float(price),
-                category=category
-            )
-
-            db.add(product)
-
-        except Exception as e:
-            errors.append({"row": index + 1, "error": str(e)})
-
-    try:
-        await db.commit()
-    except IntegrityError as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error while updating"
-        )
-
-    if errors:
-        return {
-            "message": "File processed with some errors.",
-            "errors": errors
-        }
-
-    return {"message": "File processed successfully!"}
+    for key, type_ in column_types.items():
+        data[key] = type_(data[key])
+    return data

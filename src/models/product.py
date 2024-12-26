@@ -1,8 +1,9 @@
-from src.settings import Base
-from sqlalchemy import UUID , Column , String, DateTime , Float, Integer
+from sqlalchemy import UUID, Column, String, DateTime, Float, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
+
+from src.base.db import Base
 
 
 class Product(Base):

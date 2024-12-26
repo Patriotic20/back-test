@@ -5,9 +5,7 @@ from .upload_product import router as upload_product
 from .update import router as update
 from .download_templel import router as download_templel
 
-router = APIRouter(
-    tags=["Product"]
-)
+router = APIRouter(tags=["Product"])
 
 
 router.include_router(create)

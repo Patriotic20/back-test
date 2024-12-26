@@ -6,10 +6,7 @@ from .delete import router as delete
 from .login import router as login
 
 
-router = APIRouter(
-    prefix="/users",
-    tags=["Users"]
-)
+router = APIRouter(prefix="/users", tags=["Users"])
 
 router.include_router(create)
 router.include_router(read)

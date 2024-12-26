@@ -1,15 +1,17 @@
-from src.settings import Base
-from sqlalchemy import UUID , Column , String, DateTime , Float, Integer , ForeignKey , Enum
+from sqlalchemy import UUID, Column, String, DateTime, Float, Integer, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 import enum
+
+from src.base.db import Base
 
 
 class PaymentMethod(enum.Enum):
     cash = "Cash"
     card = "Card"
     online = "Online"
+
 
 class StatusEnum(enum.Enum):
     selling = "selling"
@@ -33,4 +35,3 @@ class Sale(Base):
 
     product = relationship("Product", back_populates="sales")
     seller = relationship("User", back_populates="sales")
-

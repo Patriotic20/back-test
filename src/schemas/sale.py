@@ -13,8 +13,10 @@ class SaleBase(BaseModel):
     discount: Optional[float] = 0.0
     tax: Optional[float] = 0.0
 
+
 class SaleCreate(SaleBase):
     pass
+
 
 class SaleResponse(SaleBase):
     id: uuid.UUID

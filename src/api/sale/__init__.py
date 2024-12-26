@@ -7,10 +7,7 @@ from .confirm import router as confirm
 from .payback import router as payback
 
 
-router = APIRouter(
-    prefix="/sale",
-    tags=["Sale"]
-)
+router = APIRouter(prefix="/sale", tags=["Sale"])
 
 router.include_router(create)
 router.include_router(read)

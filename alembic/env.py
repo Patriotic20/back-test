@@ -6,8 +6,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from src.settings.db import Base
-from src.settings.config import settings
+from src.base.db import Base
+from src.base.config import settings
 from src.models import *
 
 # this is the Alembic Config object, which provides
@@ -19,7 +19,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url" , settings.connection_string)
+config.set_main_option("sqlalchemy.url", settings.connection_string)
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
