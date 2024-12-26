@@ -21,7 +21,8 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     user_info = user_info.scalars().first()
     if user_info:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="This user have in base"
+            status_code=status.HTTP_409_CONFLICT, 
+            detail="This user already exists"
         )
     new_user = User(**user.model_dump())
     db.add(new_user)
