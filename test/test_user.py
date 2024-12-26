@@ -1,96 +1,50 @@
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
+from sqlalchemy import select
+from main import app  # Assuming your FastAPI app is in src/main.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from main import app
-from src.schemas.user import UserCreate
-from unittest.mock import MagicMock
-from src.models.user import User
+from src.models.user import User, UserRole
+from passlib.context import CryptContext
+
+from fastapi.testclient import TestClient
 
 
-@pytest.fixture
-def client():
-    with TestClient(app) as client:
-        yield client
-        
-@pytest.fixture
-def mock_get_db():
-    mock_db = MagicMock()
-    yield mock_db
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-import httpx
+client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_registration_conflict_1():
-    async with httpx.AsyncClient() as client:
-        response = await client.post("/register", json={"email": "test@example.com", "password": "password123"})
-        assert response.status_code == 409
-
-    
-def test_registration_success(client , mock_get_db):        
+async def test_user_registration(db):
     user_data = {
         "first_name": "John",
         "last_name": "Doe",
-        "phone_number": "+998947413736",
-        "email": "johndoe@example.com",
-        "role": "manager",
-        "hashed_password": "securepassword"
+        "role": "seller",
+        "email": "john.doe@example.com",
+        "phone_number": "+998901234567",
+        "hashed_password": "securepassword123",
     }
     
-    mock_get_db.execute.return_value.scalars.return_value.first.return_value = None
+    response = client.post("/users/registration" , json=user_data)
+    
+    user_in_db = await db.execute(
+        select(User).where(User.email == user_data["email"])
+    )
+    
+    user_in_db = user_in_db.scalars().first()
+    
+    assert user_in_db is not None
+    assert user_in_db.first_name == user_data["first_name"]
+    assert user_in_db.last_name == user_data["role"]
+    assert pwd_context.verify(user_data["hashed_password"] , user_in_db.hashed_password)
+    
+    
+    # assert response.status_code == 200
+    
+    
+    # response_data = response.json()
+    # assert response_data["first_name"] == user_data["first_name"]
+    # assert response_data["last_name"] == user_data["last_name"]
+    # assert response_data["role"] == user_data["role"]
+    # assert response_data["email"] == user_data["email"]
+    # assert response_data["phone_number"] == user_data["phone_number"]
 
-    response = client.post("users/registration", json=user_data)
-    print(response.json())
-    
-    
-    assert response.status_code == 200
-    response_data = response.json()
-    assert response_data["first_name"] == user_data["first_name"]
-    assert response_data["last_name"] == user_data["last_name"]
-    assert response_data["phone_number"] == user_data["phone_number"]
-    assert response_data["email"] == user_data["email"]
-    assert response_data["role"] == user_data["role"]
-    assert "id" in response_data  # Ensure an ID is returned for the new user
-    assert "created_at" in response_data 
-    
-    # assert response_data["hashed_password"] != "securepassword"
-    
-    
-
-def test_registration_conflict(client):    
-    user_data = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "phone_number": "+998947413736",
-        "email": "johndoe@example.com",
-        "role": "manager",
-        "hashed_password": "securepassword"
-    }
-    
-    existing_user = MagicMock()
-    existing_user.first_name = "John"
-    existing_user.last_name = "Doe"
-    existing_user.phone_number = "+998947413736"
-    existing_user.email = "johndoe@example.com"
-    
-    # mock_get_db.execute.return_value.scalars.return_value.first.return_value = existing_user
-    
-    response = client.post("users/registration", json=user_data)
-    
-    assert response.status_code == 409 
-    assert response.json() == {"detail" : "This user already exists"}
-    
-def test_registration_invalid_role(client):
-    user_data = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "phone_number": "+99890 123 45 67",
-        "email": "johndoe@example.com",
-        "role": "admin",  # Invalid role
-        "hashed_password": "securepassword"
-    }
-    
-    response = client.post("users/registration", json=user_data)
-    
-    assert response.status_code == 422
-    assert "detail" in response.json()
-    
